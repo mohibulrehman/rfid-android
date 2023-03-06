@@ -2,7 +2,6 @@ package com.zebra.rfid.demo.sdksample;
 
 import android.os.AsyncTask;
 import android.util.Log;
-import android.widget.TextView;
 
 import com.zebra.rfid.api3.ACCESS_OPERATION_CODE;
 import com.zebra.rfid.api3.ACCESS_OPERATION_STATUS;
@@ -38,19 +37,24 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
     private static ArrayList<ReaderDevice> availableRFIDReaderList;
     private static RFIDReader reader;
     private EventHandler eventHandler;
+
     // UI and context
-    TextView textView;
+//    TextView textView;
     private MainActivity context;
     // general
     private int MAX_POWER = 270;
     // In case of RFD8500 change reader name with intended device below from list of paired RFD8500
     String readername = "RFD8500123";
 
-    void onCreate(MainActivity activity) {
-        // application context
+    TextResponseCallBack textchanged;
+
+
+    void init(MainActivity activity) {
+
         context = activity;
-        // Status UI
-        textView = activity.statusTextViewRFID;
+
+
+        textchanged = activity;
         // SDK
         InitSDK();
     }
@@ -200,7 +204,8 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
         @Override
         protected void onPostExecute(String result) {
             super.onPostExecute(result);
-            textView.setText(result);
+//            textView.setText(result);
+            textchanged.TextChanged(result);
         }
     }
 
@@ -323,7 +328,10 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
                 context.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        textView.setText("Disconnected");
+
+                        textchanged.TextChanged("Disconnected"
+                        );
+//                        textView.setText("Disconnected");
                     }
                 });
             }
@@ -432,4 +440,8 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
         //void handleStatusEvents(Events.StatusEventData eventData);
     }
 
+
+    interface TextResponseCallBack {
+        void TextChanged(String text);
+    }
 }

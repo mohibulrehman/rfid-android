@@ -1,18 +1,18 @@
 package com.zebra.rfid.demo.sdksample;
 
 import android.os.Bundle;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
-import com.zebra.rfid.api3.TagData;
+import androidx.appcompat.widget.Toolbar;
 
-public class MainActivity extends AppCompatActivity implements RFIDHandler.ResponseHandlerInterface {
+import com.zebra.rfid.api3.TagData;
+import com.zebra.rfid.demo.sdksample.ui.BaseActivity;
+
+public class MainActivity extends BaseActivity implements RFIDHandler.ResponseHandlerInterface, RFIDHandler.TextResponseCallBack {
 
     public TextView statusTextViewRFID = null;
     private TextView textrfid;
@@ -37,16 +37,15 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
 
         // RFID Handler
         rfidHandler = new RFIDHandler();
-        rfidHandler.onCreate(this);
+        rfidHandler.init(this);
+
+
 
         // set up button click listener
         Button test = findViewById(R.id.button);
-        test.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String result = rfidHandler.Test1();
-                testStatus.setText(result);
-            }
+        test.setOnClickListener(v -> {
+            String result = rfidHandler.Test1();
+            testStatus.setText(result);
         });
 
         Button test2 = findViewById(R.id.button2);
@@ -138,5 +137,10 @@ public class MainActivity extends AppCompatActivity implements RFIDHandler.Respo
             rfidHandler.performInventory();
         } else
             rfidHandler.stopInventory();
+    }
+
+    @Override
+    public void TextChanged(String text) {
+        statusTextViewRFID.setText(text);
     }
 }
