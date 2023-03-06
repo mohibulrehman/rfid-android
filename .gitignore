@@ -79,3 +79,9 @@ lint/generated/
 lint/outputs/
 lint/tmp/
 # lint/reports/
+
+
+
+RFIDSample/.idea/
+RFIDSample/build/
+RFIDSample/app/build/
