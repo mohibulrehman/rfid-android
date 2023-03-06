@@ -44,12 +44,14 @@ class MainActivity : BaseActivity() {
                 runOnUiThread { textrfid.append(sb.toString()) }
             }
 
+
             override fun handleTriggerPress(pressed: Boolean) {
                 if (pressed) {
                     runOnUiThread { textrfid.text = "" }
                     rfidHandler.performInventory()
                 } else rfidHandler.stopInventory()
             }
+
         })
 
 
