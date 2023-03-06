@@ -1,6 +1,6 @@
 package com.zebra.rfid.demo.sdksample;
 
-import android.os.AsyncTask;
+import android.content.Context;
 import android.util.Log;
 
 import com.zebra.rfid.api3.ACCESS_OPERATION_CODE;
@@ -25,10 +25,11 @@ import com.zebra.rfid.api3.STATUS_EVENT_TYPE;
 import com.zebra.rfid.api3.STOP_TRIGGER_TYPE;
 import com.zebra.rfid.api3.TagData;
 import com.zebra.rfid.api3.TriggerInfo;
+import com.zebra.rfid.demo.sdksample.ui.BaseActivity;
 
 import java.util.ArrayList;
 
-class RFIDHandler implements Readers.RFIDReaderEventHandler {
+public class RFIDHandler implements Readers.RFIDReaderEventHandler {
 
     final static String TAG = "RFID_SAMPLE";
 
@@ -40,21 +41,23 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
 
     // UI and context
 //    TextView textView;
-    private MainActivity context;
+    private Context context;
     // general
     private int MAX_POWER = 270;
     // In case of RFD8500 change reader name with intended device below from list of paired RFD8500
     String readername = "RFD8500123";
 
-    TextResponseCallBack textchanged;
+    ResponseHandlerInterface callBack;
 
+    BaseActivity baseActivity;
 
-    void init(MainActivity activity) {
+    void init(Context context1, ResponseHandlerInterface callBack1) {
 
-        context = activity;
+        context = context1;
 
+        baseActivity = (BaseActivity) context1;
 
-        textchanged = activity;
+        callBack = callBack1;
         // SDK
         InitSDK();
     }
@@ -158,14 +161,14 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
     private void InitSDK() {
         Log.d(TAG, "InitSDK");
         if (readers == null) {
-            new CreateInstanceTask().execute();
-        } else new ConnectionTask().execute();
+            CreateInstanceTaskFun();
+        } else ConnectionTaskFun();
     }
 
-    // Enumerates SDK based on host device
-    private class CreateInstanceTask extends AsyncTask<Void, Void, Void> {
-        @Override
-        protected Void doInBackground(Void... voids) {
+    void CreateInstanceTaskFun() {
+
+        baseActivity.getExecutor().runWorker(() -> {
+
             Log.d(TAG, "CreateInstanceTask");
             // Based on support available on host device choose the reader type
             InvalidUsageException invalidUsageException = null;
@@ -182,32 +185,40 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
                     readers = new Readers(context, ENUM_TRANSPORT.BLUETOOTH);
                 }
             }
-            return null;
-        }
 
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
-            new ConnectionTask().execute();
-        }
+            baseActivity.getExecutor().runMain(() -> {
+                ConnectionTaskFun();
+                return null;
+            });
+            return null;
+        });
     }
 
-    private class ConnectionTask extends AsyncTask<Void, Void, String> {
-        @Override
-        protected String doInBackground(Void... voids) {
+    String responseStr = "";
+
+    void ConnectionTaskFun() {
+
+        responseStr = "";
+        baseActivity.getExecutor().runWorker(() -> {
+
             Log.d(TAG, "ConnectionTask");
             GetAvailableReader();
-            if (reader != null) return connect();
-            return "Failed to find or connect reader";
-        }
+            if (reader != null) {
+                responseStr = connect();
+            } else responseStr = "Failed to find or connect reader";
 
-        @Override
-        protected void onPostExecute(String result) {
-            super.onPostExecute(result);
-//            textView.setText(result);
-            textchanged.TextChanged(result);
-        }
+
+            baseActivity.getExecutor().runMain(() -> {
+
+                callBack.TextChanged(responseStr);
+                return null;
+            });
+            return null;
+        });
     }
+
+    // Enumerates SDK based on host device
+
 
     private synchronized void GetAvailableReader() {
         Log.d(TAG, "GetAvailableReader");
@@ -244,7 +255,7 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
     @Override
     public void RFIDReaderAppeared(ReaderDevice readerDevice) {
         Log.d(TAG, "RFIDReaderAppeared " + readerDevice.getName());
-        new ConnectionTask().execute();
+        ConnectionTaskFun();
     }
 
     @Override
@@ -325,14 +336,10 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
             if (reader != null) {
                 reader.Events.removeEventsListener(eventHandler);
                 reader.disconnect();
-                context.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
+                baseActivity.runOnUiThread(() -> {
 
-                        textchanged.TextChanged("Disconnected"
-                        );
+                    callBack.TextChanged("Disconnected");
 //                        textView.setText("Disconnected");
-                    }
                 });
             }
         } catch (Exception e) {
@@ -395,7 +402,9 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
                 }
                 // possibly if operation was invoked from async task and still busy
                 // handle tag data responses on parallel thread thus THREAD_POOL_EXECUTOR
-                new AsyncDataUpdate().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, myTags);
+//                new AsyncDataUpdate().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, myTags);
+
+                AsyncDataUpdateFun(myTags);
             }
         }
 
@@ -404,44 +413,54 @@ class RFIDHandler implements Readers.RFIDReaderEventHandler {
             Log.d(TAG, "Status Notification: " + rfidStatusEvents.StatusEventData.getStatusEventType());
             if (rfidStatusEvents.StatusEventData.getStatusEventType() == STATUS_EVENT_TYPE.HANDHELD_TRIGGER_EVENT) {
                 if (rfidStatusEvents.StatusEventData.HandheldTriggerEventData.getHandheldEvent() == HANDHELD_TRIGGER_EVENT_TYPE.HANDHELD_TRIGGER_PRESSED) {
-                    new AsyncTask<Void, Void, Void>() {
-                        @Override
-                        protected Void doInBackground(Void... voids) {
-                            context.handleTriggerPress(true);
-                            return null;
-                        }
-                    }.execute();
+
+                    baseActivity.getExecutor().runWorker(() -> {
+
+                        callBack.handleTriggerPress(true);
+
+                        return null;
+                    });
+
+
                 }
                 if (rfidStatusEvents.StatusEventData.HandheldTriggerEventData.getHandheldEvent() == HANDHELD_TRIGGER_EVENT_TYPE.HANDHELD_TRIGGER_RELEASED) {
-                    new AsyncTask<Void, Void, Void>() {
-                        @Override
-                        protected Void doInBackground(Void... voids) {
-                            context.handleTriggerPress(false);
-                            return null;
-                        }
-                    }.execute();
+
+                    baseActivity.getExecutor().runWorker(() -> {
+
+                        callBack.handleTriggerPress(false);
+
+                        return null;
+                    });
+
                 }
             }
         }
     }
 
-    private class AsyncDataUpdate extends AsyncTask<TagData[], Void, Void> {
-        @Override
-        protected Void doInBackground(TagData[]... params) {
-            context.handleTagdata(params[0]);
+    void AsyncDataUpdateFun(TagData[] params) {
+
+       /* baseActivity.getExecutor().runWorker(() -> {
+
+            baseActivity.getExecutor().runMain(() -> null);
             return null;
-        }
+        });
+        */
+
+        baseActivity.getExecutor().runWorker(() -> {
+
+            callBack.handleTagdata(params);
+
+            return null;
+        });
     }
 
     interface ResponseHandlerInterface {
         void handleTagdata(TagData[] tagData);
 
         void handleTriggerPress(boolean pressed);
+
+        void TextChanged(String text);
         //void handleStatusEvents(Events.StatusEventData eventData);
     }
 
-
-    interface TextResponseCallBack {
-        void TextChanged(String text);
-    }
 }

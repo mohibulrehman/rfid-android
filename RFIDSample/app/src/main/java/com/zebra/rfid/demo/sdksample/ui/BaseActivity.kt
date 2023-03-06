@@ -14,7 +14,7 @@ abstract class BaseActivity : AppCompatActivity(), View.OnClickListener {
 
     lateinit var mContext: Context
     protected val TAG = this.javaClass.simpleName
-    protected val executor = Executor()
+    val executor = Executor()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
